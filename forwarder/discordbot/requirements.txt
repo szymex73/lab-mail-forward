@@ -1,0 +1,4 @@
+aio_pika==8.2.2
+asyncpg==0.26.0
+discord.py==2.0.1
+SQLAlchemy==1.4.33

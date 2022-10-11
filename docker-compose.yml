@@ -1,0 +1,83 @@
+version: '3'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.9-management-alpine
+    expose:
+    - 5672
+    # Uncomment if there's need to investigate anything
+    # ports:
+    # - 15672:15672
+    # - 5672:5672
+    hostname: forwarder-rabbit
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+    - rabbit-data:/var/lib/rabbitmq:rw,Z
+    restart: unless-stopped
+  
+  postgres:
+    image: postgres:14-alpine
+    hostname: forwarder-postgres
+    expose:
+    - 5432
+    # Uncomment if there's need to investigate anything
+    # ports:
+    # - 5432:5432
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+    - postgres-data:/var/lib/postgresql/data:rw,Z
+  
+  smtpserver:
+    image: szymex73/forwarder-smtpserver
+    build:
+      context: ./forwarder/smtpserver
+    expose:
+    - 25
+    ports:
+    - 25:25
+    depends_on:
+    - rabbitmq
+    hostname: forwarder-smtpserver
+    environment:
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      PYTHONUNBUFFERED: 1
+  
+  processor:
+    image: szymex73/forwarder-processor
+    build:
+      context: ./forwarder/processor
+    depends_on:
+    - rabbitmq
+    - postgres
+    hostname: forwarder-processor
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      PYTHONUNBUFFERED: 1
+  
+  discordbot:
+    image: szymex73/forwarder-discordbot
+    build:
+      context: ./forwarder/discordbot
+    depends_on:
+    - rabbitmq
+    - postgres
+    hostname: forwarder-discordbot
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      PYTHONUNBUFFERED: 1
+
+volumes:
+  rabbit-data:
+  postgres-data:
